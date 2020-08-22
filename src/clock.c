@@ -8,15 +8,6 @@
 #include "serial.h"
 #include "syslog.h"
 
-#ifdef ASP
-static mrb_int
-getTim()
-{
-	SYSTIM time;
-	get_tim(&time);
-	return time;
-}
-#else
 // USE_64BIT_HRTCNT は#defineされていない前提
 static mrb_value
 mrb_mruby_get_utim()
@@ -25,18 +16,13 @@ mrb_mruby_get_utim()
 	time = fch_hrt();
 	return mrb_fixnum_value(time);
 }
-#endif
 
 static mrb_value
 mrb_mruby_clock_reset(mrb_state *mrb, mrb_value self)
 {
-	mrb_int start_clock;
-#ifdef ASP
-	start_clock = getTim();
-#else
+	mrb_value start_clock;
 	start_clock = mrb_mruby_get_utim();
-#endif
-	mrb_iv_set(mrb, self, mrb_intern_lit(mrb, "@start_clock"), mrb_fixnum_value(start_clock));
+	mrb_iv_set(mrb, self, mrb_intern_lit(mrb, "@start_clock"), start_clock);
 	return mrb_true_value();
 }
 
@@ -50,14 +36,7 @@ static mrb_value
 mrb_mruby_clock_now(mrb_state *mrb, mrb_value self)
 {
 	mrb_value start_clock_val = mrb_iv_get(mrb, self, mrb_intern_lit(mrb, "@start_clock"));
-	mrb_int start_clock = mrb_fixnum(start_clock_val);
-	mrb_int now;
-#ifdef ASP
-	now = getTim() - start_clock;
-#else
-	now = mrb_mruby_get_utim() - start_clock;
-#endif
-	return mrb_fixnum_value(now);
+	return mrb_num_minus(mrb, mrb_mruby_get_utim(), start_clock_val);
 }
 
 void
